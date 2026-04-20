@@ -1,0 +1,258 @@
+.workspaces-page {
+  padding: 4rem;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.btn-create-workspace {
+  background: var(--text-primary);
+  color: var(--bg-primary);
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.2);
+}
+
+.workspaces-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 1.5rem;
+}
+
+.workspace-square-card {
+  aspect-ratio: 1 / 1;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 20px;
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.workspace-square-card:hover {
+  transform: translateY(-4px);
+  border-color: var(--ws-color);
+  box-shadow: 0 12px 24px -8px rgba(0, 0, 0, 0.3);
+}
+
+.workspace-square-card::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 80px;
+  height: 80px;
+  background: radial-gradient(circle at top right, var(--ws-color), transparent 70%);
+  opacity: 0.15;
+  pointer-events: none;
+}
+
+.ws-indicator {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+}
+
+.ws-name-large {
+  font-size: 1.5rem;
+  font-weight: 800;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+  word-break: break-word;
+}
+
+.icon-btn-small {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.icon-btn-small:hover {
+  background: var(--text-primary);
+  color: var(--bg-primary);
+}
+
+/* Color Selection UI */
+.color-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 0.75rem;
+}
+
+.color-preset-square {
+  aspect-ratio: 1 / 1;
+  border-radius: 8px;
+  border: 2px solid transparent;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.color-preset-square.active {
+  transform: scale(1.1);
+  box-shadow: 0 0 15px currentColor;
+}
+
+.color-wheel-wrapper {
+  position: relative;
+  aspect-ratio: 1 / 1;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid var(--border-color);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-primary);
+}
+
+.custom-color-wheel {
+  position: absolute;
+  width: 150%;
+  height: 150%;
+  cursor: pointer;
+  padding: 0;
+  margin: 0;
+  border: none;
+  background: none;
+}
+
+.wheel-icon {
+  z-index: 1;
+  color: var(--text-primary);
+}
+
+.workspace-input {
+  width: 100%;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
+  padding: 1rem 1.5rem;
+  border-radius: 12px;
+  font-size: 1.25rem;
+  font-weight: 700;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.workspace-input:focus {
+  border-color: var(--accent-ai);
+}
+
+.btn-finalize {
+  background: var(--accent-ai);
+  color: white;
+  border: none;
+  border-radius: 12px;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.btn-finalize:hover {
+  opacity: 0.9;
+}
+
+/* Modal Stuff */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.6);
+  backdrop-filter: blur(5px);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal-content {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  padding: 32px;
+  border-radius: var(--radius-lg, 12px);
+  width: 100%;
+  max-width: 500px;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-slide-up {
+  animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+.color-picker::-webkit-color-swatch-wrapper {
+  padding: 0;
+}
+.color-picker::-webkit-color-swatch {
+  border: none;
+  border-radius: var(--radius-sm, 4px);
+}
+
+.preset-color-bubble {
+  width: 28px;
+  height: 28px;
+  min-width: 28px;
+  min-height: 28px;
+  flex-shrink: 0;
+  border-radius: var(--radius-sm, 4px);
+  cursor: pointer;
+  transition: transform 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+
+.preset-color-bubble:hover {
+  transform: scale(1.1);
+}
+
+/* Workspace Card */
+.workspace-card {
+  transition: transform 0.2s ease, border-color 0.2s ease;
+  cursor: pointer;
+}
+
+.workspace-card:hover {
+  transform: translateY(-2px);
+}
+
+.workspace-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius, 8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.workspace-card .icon-btn {
+  opacity: 0;
+  transform: translateX(5px);
+  transition: all 0.2s ease;
+}
+
+.workspace-card:hover .icon-btn {
+  opacity: 1;
+  transform: translateX(0);
+}
+

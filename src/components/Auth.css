@@ -1,0 +1,155 @@
+.auth-page-wrapper {
+  height: 100vh;
+  width: 100vw;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #fafafa;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Background Blobs for Atmosphere - Softened for light mode */
+.auth-bg-blob {
+  position: absolute;
+  width: 800px;
+  height: 800px;
+  border-radius: 50%;
+  filter: blur(100px);
+  opacity: 0.1;
+  z-index: 0;
+  animation: blob-float 25s infinite alternate;
+}
+
+.blob-1 {
+  background: var(--accent-ai);
+  top: -200px;
+  right: -200px;
+}
+
+.blob-2 {
+  background: #6e56cf;
+  bottom: -300px;
+  left: -200px;
+  animation-delay: -7s;
+}
+
+@keyframes blob-float {
+  0% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(60px, 40px) scale(1.05); }
+  100% { transform: translate(-30px, 70px) scale(0.95); }
+}
+
+.auth-card {
+  position: relative;
+  z-index: 10;
+  width: 100%;
+  max-width: 440px;
+  padding: 4rem;
+  background: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(30px);
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  border-radius: 24px;
+  box-shadow: 
+    0 40px 80px -15px rgba(0, 0, 0, 0.08),
+    0 15px 30px -10px rgba(0, 0, 0, 0.04);
+  animation: card-appear 1s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes card-appear {
+  from { opacity: 0; transform: translateY(30px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.logo-box {
+  width: 72px;
+  height: 72px;
+  background: #ffffff;
+  border: 1px solid #e2e2e2;
+  border-radius: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 2.5rem;
+  box-shadow: 0 8px 16px -4px rgba(0, 0, 0, 0.05);
+}
+
+/* EXCEPTION: Icon should be black */
+.logo-box .text-accent-ai {
+  color: #000000 !important;
+}
+
+.auth-header h1 {
+  font-size: 1.75rem;
+  font-weight: 850;
+  letter-spacing: -0.03em;
+  margin-bottom: 1.25rem;
+  color: #111111; /* Very dark charcoal, not quite "black" in block terms */
+}
+
+.auth-header p {
+  color: #666666;
+  font-size: 0.9rem;
+  line-height: 1.6;
+  letter-spacing: -0.01em;
+  margin-bottom: 3rem;
+}
+
+.btn-google-auth {
+  position: relative;
+  background: #ffffff;
+  color: #111111;
+  /* EXCEPTION: Button border should be black */
+  border: 1.5px solid #000000;
+  cursor: pointer;
+  height: 58px;
+  width: 100%;
+  border-radius: 16px;
+  font-size: 1rem;
+  font-weight: 750;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+}
+
+.btn-google-auth:hover {
+  transform: translateY(-3px);
+  background: #fafafa;
+  box-shadow: 0 10px 20px -10px rgba(0, 0, 0, 0.1);
+}
+
+.btn-google-auth:active {
+  transform: translateY(-1px);
+}
+
+.auth-error {
+  animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both;
+  color: #ef4444;
+  background-color: rgba(239, 68, 68, 0.05);
+  border: 1px solid rgba(239, 68, 68, 0.1);
+  padding: 12px 16px;
+  border-radius: 12px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  margin-bottom: 1.5rem;
+}
+
+.auth-footer {
+  margin-top: 3.5rem;
+}
+
+@keyframes shake {
+  10%, 90% { transform: translate3d(-1px, 0, 0); }
+  20%, 80% { transform: translate3d(2px, 0, 0); }
+  30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
+  40%, 60% { transform: translate3d(4px, 0, 0); }
+}
+
+@media (max-width: 480px) {
+  .auth-card {
+    padding: 2.5rem;
+    margin: 1.5rem;
+  }
+}

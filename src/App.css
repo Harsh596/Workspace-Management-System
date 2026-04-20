@@ -1,0 +1,28 @@
+.loading-screen {
+  height: 100vh;
+  width: 100vw;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--bg-primary);
+  flex-direction: column;
+  gap: 2rem;
+}
+
+.loading-logo-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.loading-logo-spinner {
+  color: var(--accent-ai);
+  animation: logo-rotate 2s infinite cubic-bezier(0.4, 0, 0.2, 1);
+  filter: drop-shadow(0 0 15px var(--accent-ai-glow));
+}
+
+@keyframes logo-rotate {
+  0% { transform: rotate(0deg) scale(1); }
+  50% { transform: rotate(180deg) scale(1.1); }
+  100% { transform: rotate(360deg) scale(1); }
+}

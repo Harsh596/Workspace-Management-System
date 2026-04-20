@@ -1,0 +1,60 @@
+.top-navbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 40px;
+  height: 72px; /* Fixed height for top header */
+  background-color: var(--bg-secondary);
+  border-bottom: 1px solid var(--border-color);
+  position: sticky;
+  top: 0;
+  z-index: 50; /* Ensure it stays above other content */
+}
+
+.navbar-links {
+  display: flex;
+  height: 100%;
+}
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 100%;
+  padding: 0 16px;
+  color: var(--text-muted);
+  font-weight: 900;
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  border-bottom: 2px solid transparent;
+  text-decoration: none;
+  transition: color 0.1s ease;
+}
+
+.nav-item:hover {
+  color: var(--text-primary);
+  background-color: var(--bg-tertiary);
+}
+
+.nav-item.active {
+  color: var(--text-primary);
+  border-bottom-color: var(--accent-ai); /* Primary indicator */
+}
+
+/* AI Toggle Override */
+.nav-item.ai-toggle {
+  height: 36px;
+  border-radius: var(--radius);
+  border: 1px solid var(--accent-ai);
+  color: var(--accent-ai);
+}
+
+.nav-item.ai-toggle:hover {
+  background-color: var(--accent-ai-glow);
+}
+
+.nav-item.active-ai {
+  background-color: var(--accent-ai);
+  color: #fff;
+}

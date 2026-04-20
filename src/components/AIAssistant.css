@@ -1,0 +1,132 @@
+.ai-panel {
+  width: 320px;
+  background-color: var(--bg-secondary);
+  border-left: 1px solid var(--border-color);
+  height: 100vh;
+  position: relative;
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transform: translateX(100%);
+  display: none;
+  flex-shrink: 0;
+}
+
+.ai-panel.open {
+  transform: translateX(0);
+  display: flex;
+}
+
+.ai-header {
+  padding: 24px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.text-ai {
+  color: var(--accent-ai);
+}
+
+.chat-container {
+  flex: 1;
+  padding: 24px;
+  overflow-y: auto;
+}
+
+.message {
+  max-width: 90%;
+}
+
+.message.user {
+  margin-left: auto;
+  flex-direction: row-reverse;
+}
+
+.avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.ai-avatar {
+  background-color: var(--accent-ai-glow);
+  color: var(--accent-ai);
+}
+
+.message-bubble {
+  padding: 12px 16px;
+  border-radius: 12px;
+  line-height: 1.4;
+}
+
+.message.ai .message-bubble {
+  background-color: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-top-left-radius: 4px;
+  color: var(--text-primary);
+}
+
+.message.user .message-bubble {
+  background-color: var(--text-primary);
+  color: var(--bg-primary);
+  border-top-right-radius: 4px;
+}
+
+.chat-input-area {
+  padding: 24px;
+  background-color: var(--bg-secondary);
+  border-top: 1px solid var(--border-color);
+}
+
+.chat-input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.chat-input-wrapper input {
+  padding-right: 48px;
+  background-color: var(--bg-primary);
+  border-color: var(--border-color);
+  border-radius: 20px;
+}
+
+.chat-input-wrapper input:focus {
+  border-color: var(--accent-ai);
+  box-shadow: 0 0 0 1px var(--accent-ai);
+}
+
+.send-btn {
+  position: absolute;
+  right: 6px;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background-color: var(--accent-ai);
+  color: white;
+  border: none;
+}
+
+.send-btn:hover {
+  background-color: var(--accent-ai-hover);
+}
+
+@media (max-width: 1024px) {
+  .ai-panel {
+    position: fixed;
+    top: 0;
+    right: 0;
+    z-index: 100;
+    box-shadow: -4px 0 24px rgba(0,0,0,0.5);
+  }
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.rotating {
+  animation: spin 1s linear infinite;
+}

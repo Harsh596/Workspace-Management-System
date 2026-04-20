@@ -1,0 +1,130 @@
+.task-board-content {
+  padding: 40px;
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.task-board-view {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.kanban-scroll-container {
+  flex: 1;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding-bottom: 2rem;
+}
+
+.kanban-columns-grid {
+  display: flex;
+  gap: 2rem;
+  height: 100%;
+  min-width: fit-content;
+}
+
+.kanban-column {
+  width: 320px;
+  flex-shrink: 0;
+  background-color: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg, 12px);
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+}
+
+.column-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 13px;
+  font-weight: 850;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+}
+
+.priority-badge {
+  padding: 4px 8px;
+  border-radius: var(--radius-sm, 4px);
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.kanban-column.drag-over {
+  background-color: rgba(255, 255, 255, 0.03);
+  border-color: var(--accent-ai);
+}
+
+.task-cards-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  overflow-y: auto;
+  padding-right: 8px;
+}
+
+.task-card {
+  background: var(--bg-primary);
+  padding: 16px;
+  border-radius: 8px;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  border: 1px solid var(--border-color);
+  cursor: grab;
+
+.kanban-card.dragging {
+  opacity: 0.5;
+  transform: scale(0.98);
+}
+
+.kanban-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--border-hover);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+.kanban-card:active {
+  cursor: grabbing;
+}
+
+.priority-tag {
+  background-color: var(--bg-tertiary);
+  padding: 2px 6px;
+  border-radius: 4px;
+  text-transform: capitalize;
+}
+
+.icon-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px;
+}
+.icon-btn:hover { color: var(--text-primary); }
+
+.status-actions button {
+  font-size: 11px;
+  padding: 2px 6px;
+  background: var(--bg-tertiary);
+  border-radius: 4px;
+  color: var(--text-secondary);
+}
+.status-actions button:hover {
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+}
+
+@media (max-width: 1024px) {
+  .kanban-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+}
