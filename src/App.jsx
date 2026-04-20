@@ -14,13 +14,29 @@ import Authentication from './components/Authentication';
 import { ShieldCheck } from 'lucide-react';
 import './App.css';
 
+// Protected Route Component
+const ProtectedRoute = ({ children, user, loading }) => {
+  if (loading) return (
+    <div className="loading-screen">
+      <div className="loading-logo-container">
+        <ShieldCheck size={48} className="loading-logo-spinner" />
+      </div>
+    </div>
+  );
+  
+  if (!user) {
+    return <Navigate to="/login" replace />;
+  }
+  
+  return children;
+};
+
 export default function App() {
   const [showAI, setShowAI] = useState(false);
   const [tasks, setTasks] = useState([]);
   const [userSettings, setUserSettings] = useState(null);
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
-  // Timer removed as per request
 
   useEffect(() => {
     const auth = getAuth();
@@ -28,7 +44,6 @@ export default function App() {
       setUser(currentUser);
       setLoading(false);
     });
-
     return () => unsubscribeAuth();
   }, []);
 
@@ -48,9 +63,7 @@ export default function App() {
         if (docSnap.exists()) {
           const loadedSettings = docSnap.data();
           setUserSettings(loadedSettings);
-          if (loadedSettings.theme) {
-            applyTheme(loadedSettings.theme);
-          }
+          if (loadedSettings.theme) applyTheme(loadedSettings.theme);
         } else {
           setUserSettings(null);
           applyTheme("default");
@@ -74,34 +87,42 @@ export default function App() {
     );
   }
 
-  if (!user) {
-    return <Authentication />;
-  }
-
   return (
     <Router>
-      <Navbar 
-        showAI={showAI}
-        setShowAI={setShowAI}
-      />
-      
-      <main style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
+      <div className="app-container flex flex-col h-screen overflow-hidden">
         <Routes>
-        <Route path="/" element={<Navigate to="/dashboard" />} />
-        <Route path="/dashboard" element={<Dashboard tasks={tasks} userSettings={userSettings} userId={user.uid} />} />
-        <Route path="/workspaces" element={<Workspaces userId={user.uid} userSettings={userSettings} />} />
-        <Route path="/tasks" element={<TaskBoard tasks={tasks} userId={user.uid} />} />
-        <Route path="/settings" element={<Settings userId={user.uid} userSettings={userSettings} />} />
-      </Routes>
-      </main>
+          {/* Public Login Route */}
+          <Route 
+            path="/login" 
+            element={user ? <Navigate to="/dashboard" replace /> : <Authentication />} 
+          />
 
-      <AIAssistant 
-        isOpen={showAI} 
-        onClose={() => setShowAI(false)}
-        tasks={tasks}
-        userSettings={userSettings}
-        userId={user.uid}
-      />
+          {/* Protected Routes */}
+          <Route path="/*" element={
+            <ProtectedRoute user={user} loading={loading}>
+              <div className="flex flex-col h-full w-full">
+                <Navbar showAI={showAI} setShowAI={setShowAI} />
+                <main className="flex-1 overflow-hidden relative flex flex-col">
+                  <Routes>
+                    <Route path="/" element={<Navigate to="/dashboard" replace />} />
+                    <Route path="/dashboard" element={<Dashboard tasks={tasks} userSettings={userSettings} userId={user?.uid} />} />
+                    <Route path="/workspaces" element={<Workspaces userId={user?.uid} userSettings={userSettings} />} />
+                    <Route path="/tasks" element={<TaskBoard tasks={tasks} userId={user?.uid} />} />
+                    <Route path="/settings" element={<Settings userId={user?.uid} userSettings={userSettings} />} />
+                  </Routes>
+                </main>
+                <AIAssistant 
+                  isOpen={showAI} 
+                  onClose={() => setShowAI(false)}
+                  tasks={tasks}
+                  userSettings={userSettings}
+                  userId={user?.uid}
+                />
+              </div>
+            </ProtectedRoute>
+          } />
+        </Routes>
+      </div>
     </Router>
   );
 }
