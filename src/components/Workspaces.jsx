@@ -105,8 +105,8 @@ export default function Workspaces({ userId, userSettings }) {
       </header>
 
       {isCreating && (
-        <div className="modal-overlay" onClick={closeModal}>
-          <div className="modal-card bento-card animate-slide-up" onClick={e => e.stopPropagation()}>
+        <div className="workspace-modal-overlay" onClick={closeModal}>
+          <div className="workspace-modal-content bento-card animate-slide-up" onClick={e => e.stopPropagation()}>
             <div className="flex justify-between items-center mb-8">
               <h2 className="text-xl font-bold">{editingWorkspace ? 'Refactor Hub' : 'Initialize Hub'}</h2>
               <button className="icon-btn" onClick={closeModal}><X size={20}/></button>
@@ -163,7 +163,7 @@ export default function Workspaces({ userId, userSettings }) {
         {workspaces.map(ws => (
           <div 
             key={ws.id} 
-            className="workspace-square-card group" 
+            className="workspace-card group" 
             style={{ '--ws-color': ws.color }}
             onClick={() => setActiveWorkspace(ws)}
           >
