@@ -11,31 +11,44 @@ export const askAI = async (prompt, workspaceTasks, customApiKey = null, preferr
     const genAI = new GoogleGenerativeAI(activeKey);
     const model = genAI.getGenerativeModel({ model: preferredModel });
 
-    // Handle both old single-array context and new aggregated object context
-    let tasksContext = "";
-    let workspaceList = "";
-
-    if (workspaceTasks.tasks) {
-      tasksContext = JSON.stringify(workspaceTasks.tasks, null, 2);
-      workspaceList = workspaceTasks.workspaces.map(w => w.name).join(", ");
-    } else {
-      tasksContext = JSON.stringify(workspaceTasks, null, 2);
+    // Enhanced Data Preparation: Map internal IDs to Human names
+    const workspaceMap = {};
+    if (workspaceTasks.workspaces) {
+      workspaceTasks.workspaces.forEach(w => {
+        workspaceMap[w.id] = w.name;
+      });
     }
 
+    const readableTasks = workspaceTasks.tasks ? workspaceTasks.tasks.map(t => ({
+      ...t,
+      hubName: workspaceMap[t.workspaceId] || 'Unknown Hub',
+      workspaceId: undefined, // Hide IDs from AI to prevent citation of them
+      userId: undefined,
+      id: undefined
+    })) : [];
+
+    const tasksContext = JSON.stringify(readableTasks, null, 2);
+    const workspaceList = workspaceTasks.workspaces ? workspaceTasks.workspaces.map(w => w.name).join(", ") : 'Active Context';
+
     const systemInstruction = `
-      You are an intelligent Workspace Assistant. Your goal is to help the user manage their productivity.
-      You have access to their contextual memory across selected workspaces: ${workspaceList || 'Active Project'}.
-      
-      Here is the raw data (tasks/resources) in JSON format:
+      You are the "Strategic Workspace Orchestrator" for WMS (Workspace Management System).
+      Your goal is to provide high-level strategic summaries, task prioritization, and operational insights.
+
+      CRITICAL RULES:
+      1. NEVER show raw database IDs (e.g., "z1d99..."). ALWAYS use the Hub (Workspace) names provided.
+      2. Use a sophisticated, minimalist Professional tone. Avoid conversational "filler" or "robot headers" (e.g., "SYSTEM STATUS: ACTIVE").
+      3. Use clean Markdown for structure: **Bold** for emphasis and bullet points for lists.
+      4. If summarizing tasks, group them logically by Hub (Workspace) name.
+
+      CONTEXTUAL KNOWLEDGE:
+      - Active Hubs: ${workspaceList}
+      - Detailed System State (Tasks/Resources): 
       ${tasksContext}
 
-      Instructions:
-      1. Always reference this specific data when answering.
-      2. If multiple workspaces are selected, help the user understand the relationship between them.
-      3. Respond concisely and professionally in high-contrast monochrome style.
+      Respond with authority and precision.
     `;
 
-    const fullPrompt = `${systemInstruction}\n\nUser Question: ${prompt}`;
+    const fullPrompt = `${systemInstruction}\n\nUser Intelligence Request: ${prompt}`;
 
     const result = await model.generateContent(fullPrompt);
     const response = await result.response;

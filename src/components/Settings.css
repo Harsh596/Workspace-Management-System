@@ -202,20 +202,51 @@
 }
 
 .btn-danger {
-  background-color: rgba(239, 68, 68, 0.1);
-  color: #ef4444;
-  border: 1px solid rgba(239, 68, 68, 0.3);
-  padding: 10px 16px;
-  border-radius: var(--radius, 8px);
+  background-color: #ef4444;
+  color: #ffffff;
+  border: 1px solid #ef4444;
+  padding: 14px 24px;
+  border-radius: var(--radius-lg, 12px);
   font-size: 14px;
-  font-weight: 500;
+  font-weight: 900;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 4px 0 font-bold rgb(153, 27, 27);
+  letter-spacing: 0.1em;
 }
 
 .btn-danger:hover:not(:disabled) {
-  background-color: #ef4444;
-  color: #ffffff;
+  background-color: #dc2626;
+  transform: translateY(2px);
+  box-shadow: 0 2px 0 rgb(153, 27, 27);
+}
+
+.btn-danger:active:not(:disabled) {
+  transform: translateY(4px);
+  box-shadow: none;
+}
+
+.btn-danger:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  filter: grayscale(1);
+}
+
+.settings-section.danger-section {
+  border: 2px solid rgba(239, 68, 68, 0.3);
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.05) 0%, transparent 100%);
+  position: relative;
+  overflow: hidden;
+}
+
+.settings-section.danger-section::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 4px;
+  height: 100%;
+  background: #ef4444;
 }
 
 .icon-btn {

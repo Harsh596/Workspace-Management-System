@@ -16,7 +16,17 @@ import StarterKit from '@tiptap/starter-kit';
 import { db, storage } from '../firebase';
 import StatusNotice from './StatusNotice';
 import { Rnd } from 'react-rnd'; // For resizable widgets
+import { saveLocalFile, getLocalFile } from '../utils/localVault';
+import FocusEditor from './FocusEditor';
 import './WorkspaceDetails.css';
+
+const sanitizeUrl = (url) => {
+  if (!url) return '';
+  if (!/^https?:\/\//i.test(url)) {
+    return `https://${url}`;
+  }
+  return url;
+};
 
 // MenuBar Component for TipTap
 const MenuBar = ({ editor }) => {
@@ -60,6 +70,9 @@ export default function WorkspaceDetails({ workspace, onBack, userId }) {
   const [editedTitle, setEditedTitle] = useState(workspace?.name || '');
   const [showResourceDrawer, setShowResourceDrawer] = useState(false);
   const [resources, setResources] = useState([]);
+  const [localUrls, setLocalUrls] = useState({}); // { resourceId: blobUrl }
+  const [uploadMode, setUploadMode] = useState('local'); // 'local' or 'cloud'
+  const [focusResource, setFocusResource] = useState(null); // Resource object currently in focus mode
   const [newResourceURL, setNewResourceURL] = useState('');
   const [newResourceType, setNewResourceType] = useState('link');
   const [error, setError] = useState(null);
@@ -125,6 +138,43 @@ export default function WorkspaceDetails({ workspace, onBack, userId }) {
     return () => unsubscribe();
   }, [workspace]);
 
+  // Hydrate Local Resources
+  useEffect(() => {
+    const hydrateLocal = async () => {
+      const newUrls = { ...localUrls };
+      let changed = false;
+
+      for (const res of resources) {
+        if (res.storageType === 'local' && !newUrls[res.id]) {
+          try {
+            const blob = await getLocalFile(res.id);
+            if (blob) {
+              newUrls[res.id] = URL.createObjectURL(blob);
+              changed = true;
+            }
+          } catch (err) {
+            console.error("Hydration Failed for", res.id, err);
+          }
+        }
+      }
+
+      if (changed) {
+        setLocalUrls(newUrls);
+      }
+    };
+
+    if (resources.length > 0) {
+      hydrateLocal();
+    }
+  }, [resources]);
+
+  // Cleanup Blob URLs on unmount
+  useEffect(() => {
+    return () => {
+      Object.values(localUrls).forEach(url => URL.revokeObjectURL(url));
+    };
+  }, []);
+
   const addTab = async (title = 'New Editor') => {
     try {
       const docRef = await addDoc(collection(db, `workspaces/${workspace.id}/tabs`), {
@@ -158,44 +208,132 @@ export default function WorkspaceDetails({ workspace, onBack, userId }) {
     }
   };
 
-  const handleFileUpload = (e) => {
+  const handleFileUpload = async (e) => {
     const file = e.target.files[0];
     if (!file || !workspace) return;
 
-    setIsUploading(true);
-    const storageRef = ref(storage, `workspaces/${workspace.id}/resources/${file.name}`);
-    const uploadTask = uploadBytesResumable(storageRef, file);
+    const inputElement = e.target;
+    setError(null);
 
-    uploadTask.on('state_changed', 
-      (snapshot) => {
-        const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-        setUploadProgress(progress);
-      }, 
-      (err) => {
-        setError("Upload failed: " + err.message);
-        setIsUploading(false);
-      }, 
-      async () => {
-        const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
-        await addDoc(collection(db, `workspaces/${workspace.id}/resources`), {
-          url: downloadURL,
-          type: 'pdf',
+    // MODE: LOCAL (Big Brain Move - Instant & Free)
+    if (uploadMode === 'local') {
+      setIsUploading(true);
+      try {
+        // 1. Create a dummy Doc in Firestore first to get a real ID
+        const docRef = await addDoc(collection(db, `workspaces/${workspace.id}/resources`), {
           title: file.name,
-          createdAt: serverTimestamp()
+          type: 'pdf',
+          storageType: 'local', // Key flag
+          createdAt: serverTimestamp(),
+          url: 'local' // Placeholder
         });
+
+        // 2. Save actual file bytes to local IndexedDB using the Doc ID
+        await saveLocalFile(docRef.id, file);
+
+        const blobUrl = URL.createObjectURL(file);
+        
+        // 3. Update memory state for instant preview
+        setLocalUrls(prev => ({
+          ...prev,
+          [docRef.id]: blobUrl
+        }));
+
+        // 4. BIG BRAIN AUTO-FOCUS: Immediately open the reader
+        setFocusResource({
+          id: docRef.id,
+          title: file.name,
+          type: 'pdf',
+          storageType: 'local',
+          url: blobUrl, // Use real blobUrl instead of 'local' string
+          notes: ''
+        });
+
         setIsUploading(false);
         setUploadProgress(0);
+        inputElement.value = '';
+      } catch (err) {
+        console.error("Local Ingest Failed:", err);
+        setError("Failed to save file locally: " + err.message);
+        setIsUploading(false);
       }
-    );
+      return;
+    }
+
+    // MODE: CLOUD (Regular Firebase Storage)
+    setIsUploading(true);
+    try {
+      const storageRef = ref(storage, `workspaces/${workspace.id}/resources/${Date.now()}_${file.name}`);
+      const uploadTask = uploadBytesResumable(storageRef, file);
+
+      uploadTask.on('state_changed', 
+        (snapshot) => {
+          const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+          setUploadProgress(progress);
+        }, 
+        (err) => {
+          console.error("Firebase Storage Upload Error:", err);
+          setError(`Upload failed: ${err.message}. Check your Firebase Storage rules.`);
+          setIsUploading(false);
+          setUploadProgress(0);
+          inputElement.value = '';
+        }, 
+        async () => {
+          try {
+            const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+            const resData = {
+              url: downloadURL,
+              type: 'pdf',
+              storageType: 'cloud',
+              title: file.name,
+              createdAt: serverTimestamp(),
+              notes: ''
+            };
+            const resDoc = await addDoc(collection(db, `workspaces/${workspace.id}/resources`), resData);
+            
+            // AUTO-FOCUS for Cloud Uploads too
+            setFocusResource({ id: resDoc.id, ...resData });
+
+            setIsUploading(false);
+            setUploadProgress(0);
+            inputElement.value = '';
+          } catch (dbErr) {
+            console.error("Firestore Registry Error:", dbErr);
+            setError(`File uploaded, but registration failed: ${dbErr.message}`);
+            setIsUploading(false);
+            inputElement.value = '';
+          }
+        }
+      );
+    } catch (startErr) {
+      console.error("Upload Initiation Error:", startErr);
+      setError(`Could not start upload: ${startErr.message}`);
+      setIsUploading(false);
+      inputElement.value = '';
+    }
+  };
+
+  const handleSaveNotes = async (resourceId, notes) => {
+    try {
+      await updateDoc(doc(db, `workspaces/${workspace.id}/resources`, resourceId), {
+        notes,
+        updatedAt: serverTimestamp()
+      });
+      // Update local state if needed
+      setResources(prev => prev.map(r => r.id === resourceId ? { ...r, notes } : r));
+    } catch (err) {
+      setError("Failed to save notes: " + err.message);
+    }
   };
 
   const addResource = async () => {
     if (!newResourceURL.trim()) return;
     try {
+      const sanitized = sanitizeUrl(newResourceURL);
       await addDoc(collection(db, `workspaces/${workspace.id}/resources`), {
-        url: newResourceURL,
+        url: sanitized,
         type: newResourceType,
-        title: newResourceURL.split('/').pop() || 'Untitled Resource',
+        title: sanitized.split('/').pop() || 'Untitled Resource',
         createdAt: serverTimestamp()
       });
       setNewResourceURL('');
@@ -327,7 +465,8 @@ export default function WorkspaceDetails({ workspace, onBack, userId }) {
             const data = e.dataTransfer.getData('resource');
             if (data && activeTab) {
               const res = JSON.parse(data);
-              addWidgetToTab(res.type, { url: res.url, title: res.title });
+              const targetUrl = res.storageType === 'local' ? localUrls[res.id] : res.url;
+              addWidgetToTab(res.type, { url: targetUrl, title: res.title, storageType: res.storageType });
             }
           }}
         >
@@ -387,6 +526,7 @@ export default function WorkspaceDetails({ workspace, onBack, userId }) {
                         });
                       }}
                       bounds="parent"
+                      dragHandleClassName="drag-handle"
                       className="widget-container"
                       handleComponent={{
                         bottomRight: <div className="widget-resize-handle" />
@@ -414,7 +554,7 @@ export default function WorkspaceDetails({ workspace, onBack, userId }) {
                            {widget.type === 'link' && (
                              <div className="w-full h-full flex flex-col items-center justify-center p-6 text-center">
                                 <ExternalLink size={24} className="mb-2 text-accent-ai" />
-                                <a href={widget.url} target="_blank" rel="noreferrer" className="text-xs font-bold underline truncate w-full">{widget.url}</a>
+                                <a href={sanitizeUrl(widget.url)} target="_blank" rel="noreferrer" className="text-xs font-bold underline truncate w-full">{widget.url}</a>
                              </div>
                            )}
                            {widget.type === 'timer' && <TimerWidget />}
@@ -442,6 +582,26 @@ export default function WorkspaceDetails({ workspace, onBack, userId }) {
                 </button>
               </div>
               
+              {/* Storage Mode Toggle */}
+              <div className="storage-mode-selector mb-6">
+                <button 
+                  className={`storage-btn ${uploadMode === 'local' ? 'active' : ''}`}
+                  onClick={() => setUploadMode('local')}
+                  title="Zero-Cost Local Storage (This Device Only)"
+                >
+                  <MousePointer2 size={14} />
+                  <span>Local</span>
+                </button>
+                <button 
+                  className={`storage-btn ${uploadMode === 'cloud' ? 'active' : ''}`}
+                  onClick={() => setUploadMode('cloud')}
+                  title="Cloud Workspace Sync (All Devices)"
+                >
+                  <Layers size={14} />
+                  <span>Cloud</span>
+                </button>
+              </div>
+
               <div className="resource-type-selector">
                 <button className={`type-btn ${newResourceType === 'link' ? 'active' : ''}`} onClick={() => setNewResourceType('link')}>
                   <LinkIcon size={14} />
@@ -510,6 +670,23 @@ export default function WorkspaceDetails({ workspace, onBack, userId }) {
                    key={res.id} 
                    className="resource-item"
                    draggable
+             onClick={() => {
+               const targetUrl = res.storageType === 'local' ? localUrls[res.id] : res.url;
+               if (!targetUrl) {
+                 setError("Local file not found on this device.");
+                 return;
+               }
+               // If it's a PDF or Video, use Focus Mode for the "Simple Send & See" experience
+               if (res.type === 'pdf' || res.type === 'video') {
+                 setFocusResource({
+                   ...res,
+                   url: targetUrl
+                 });
+               } else {
+                 window.open(sanitizeUrl(targetUrl), '_blank', 'noopener,noreferrer');
+               }
+             }}
+                   title="Click to open or drag to editor"
                    onDragStart={(e) => {
                      e.dataTransfer.setData('resource', JSON.stringify(res));
                      e.currentTarget.style.opacity = '0.5';
@@ -523,7 +700,12 @@ export default function WorkspaceDetails({ workspace, onBack, userId }) {
                     </div>
                     <div className="resource-meta">
                       <span className="resource-title">{res.title}</span>
-                      <span className="resource-badge">{res.type} Reference</span>
+                      <div className="flex items-center gap-2 mt-1">
+                        <span className="resource-badge">{res.type} Reference</span>
+                        <span className={`storage-tag ${res.storageType}`}>
+                          {res.storageType === 'local' ? 'Local-Only' : 'Cloud-Sync'}
+                        </span>
+                      </div>
                     </div>
                     <div className="ml-auto opacity-0 group-hover:opacity-100 transition-opacity">
                       <Search size={14} className="text-muted" />
@@ -541,6 +723,15 @@ export default function WorkspaceDetails({ workspace, onBack, userId }) {
         )}
       </div>
       <StatusNotice message={error} onClose={() => setError(null)} />
+
+      {/* Focus Mode Overlay */}
+      {focusResource && (
+        <FocusEditor 
+          resource={focusResource}
+          onClose={() => setFocusResource(null)}
+          onSave={handleSaveNotes}
+        />
+      )}
     </div>
   );
 }

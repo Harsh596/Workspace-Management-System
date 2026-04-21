@@ -5,7 +5,7 @@ import { Rnd } from 'react-rnd';
 import { 
   Bold, Italic, Strikethrough, Heading1, Heading2, 
   Heading3, List, ListOrdered, Quote, Code, X, Save,
-  ZoomIn, ZoomOut, MousePointer2, Move, Maximize2
+  ZoomIn, ZoomOut, MousePointer2, Move, Maximize2, Minimize2
 } from 'lucide-react';
 import './FocusEditor.css';
 
@@ -33,16 +33,19 @@ const MenuBar = ({ editor }) => {
 
 export default function FocusEditor({ resource, onClose, onSave }) {
   const [zoom, setZoom] = useState(1);
+  const [pdfScale, setPdfScale] = useState(1); // Restore lost state
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const [zIndices, setZIndices] = useState({ resource: 10, editor: 20 });
+  const [isInteracting, setIsInteracting] = useState(false); // Restore lost state
   
   const viewportRef = useRef(null);
   const lastMousePos = useRef({ x: 0, y: 0 });
   const isDraggingCanvas = useRef(false);
 
+  // DEFENSIVE HOOK: Safety first to prevent white-screen crashes
   const editor = useEditor({
     extensions: [StarterKit],
-    content: resource.notes || '<p></p>',
+    content: resource?.notes || '<p></p>',
   });
 
   const handleSave = () => {
@@ -53,6 +56,9 @@ export default function FocusEditor({ resource, onClose, onSave }) {
     if (win === 'resource') setZIndices({ resource: 30, editor: 10 });
     else setZIndices({ resource: 10, editor: 30 });
   };
+
+  const startInteracting = () => setIsInteracting(true);
+  const stopInteracting = () => setIsInteracting(false);
 
   // Canvas Panning
   const handleMouseDown = (e) => {
@@ -102,18 +108,57 @@ export default function FocusEditor({ resource, onClose, onSave }) {
     } catch { return url; }
   };
 
+  const sanitizeUrl = (url) => {
+    if (!url) return '';
+    if (!/^https?:\/\//i.test(url)) {
+      return `https://${url}`;
+    }
+    return url;
+  };
+
   const renderResource = () => {
+    const targetUrl = resource.url && resource.url.startsWith('blob:') ? resource.url : sanitizeUrl(resource.url);
+    const shieldClass = isInteracting ? 'pointer-events-none opacity-50' : 'pointer-events-auto';
+
     if (resource.type === 'video') {
-      const url = getValidatedEmbedUrl(resource.url);
-      if (url === 'INVALID_YOUTUBE') return <div className="p-8 text-center text-danger bg-surface w-full h-full">Invalid YouTube URL.</div>;
-      return <iframe className="w-full h-full border-none pointer-events-auto" src={url} allowFullScreen></iframe>;
+      const embedUrl = getValidatedEmbedUrl(targetUrl);
+      if (embedUrl === 'INVALID_YOUTUBE') return <div className="p-8 text-center text-danger bg-surface w-full h-full">Invalid YouTube URL.</div>;
+      return <iframe className={`w-full h-full border-none transition-opacity ${shieldClass}`} src={embedUrl} allowFullScreen></iframe>;
+    } else if (resource.type === 'pdf') {
+      return (
+        <div className={`w-full h-full relative overflow-hidden bg-black ${shieldClass}`}>
+          <iframe 
+            className="w-full h-full border-none transition-transform origin-top-left" 
+            src={targetUrl} 
+            type="application/pdf"
+            style={{ 
+              transform: `scale(${pdfScale})`, 
+              width: `${100 / pdfScale}%`, 
+              height: `${100 / pdfScale}%` 
+            }}
+          />
+        </div>
+      );
     } else if (resource.type === 'text' && resource.url.toLowerCase().endsWith('.pdf')) {
-      return <iframe className="w-full h-full border-none pointer-events-auto" src={resource.url} type="application/pdf"></iframe>;
+      return (
+        <div className={`w-full h-full relative overflow-hidden bg-black ${shieldClass}`}>
+          <iframe 
+            className="w-full h-full border-none transition-transform origin-top-left" 
+            src={targetUrl} 
+            type="application/pdf"
+            style={{ 
+              transform: `scale(${pdfScale})`, 
+              width: `${100 / pdfScale}%`, 
+              height: `${100 / pdfScale}%` 
+            }}
+          />
+        </div>
+      );
     } else {
       return (
         <div className="flex-col w-full h-full justify-center items-center p-12 text-center pointer-events-auto bg-surface">
           <h2 className="mb-4">{resource.title}</h2>
-          <a href={resource.url} target="_blank" rel="noreferrer" className="btn-primary">Open Source</a>
+          <a href={targetUrl} target="_blank" rel="noreferrer" className="btn-primary">Open Source</a>
         </div>
       );
     }
@@ -124,16 +169,24 @@ export default function FocusEditor({ resource, onClose, onSave }) {
       <div className="focus-editor-header flex justify-between items-center bg-surface-container-highest px-6 py-4 border-b border-color z-[101]">
         <div className="flex items-center gap-4">
           <button className="icon-btn border-none" onClick={onClose} title="Exit"><X size={20} /></button>
-          <h2 className="text-primary m-0 tracking-widest uppercase">FOCUS: {resource.title}</h2>
+          <h2 className="text-primary m-0 tracking-widest uppercase">FOCUS: {resource.title || 'Untitled Document'}</h2>
         </div>
         
         {/* Spatial Controls */}
-        <div className="flex items-center gap-2 bg-surface p-1 rounded border border-color">
-          <button className="icon-btn" onClick={() => setZoom(z => Math.min(2.5, z + 0.1))}><ZoomIn size={16}/></button>
-          <span className="font-mono text-xs w-12 text-center text-accent">{Math.round(zoom * 100)}%</span>
-          <button className="icon-btn" onClick={() => setZoom(z => Math.max(0.4, z - 0.1))}><ZoomOut size={16}/></button>
-          <div className="w-px h-4 bg-color mx-2"></div>
-          <p className="text-[10px] text-muted uppercase font-bold px-2">Hold CMD to Zoom</p>
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 bg-surface p-1 rounded border border-color">
+            <span className="text-[10px] font-black uppercase px-2 text-muted">Canvas</span>
+            <button className="icon-btn" onClick={() => setZoom(z => Math.min(2.5, z + 0.1))}><ZoomIn size={14}/></button>
+            <span className="font-mono text-xs w-10 text-center text-accent">{Math.round(zoom * 100)}%</span>
+            <button className="icon-btn" onClick={() => setZoom(z => Math.max(0.4, z - 0.1))}><ZoomOut size={14}/></button>
+          </div>
+
+          <div className="flex items-center gap-2 bg-surface p-1 rounded border border-color">
+            <span className="text-[10px] font-black uppercase px-2 text-muted">PDF Scale</span>
+            <button className="icon-btn" onClick={() => setPdfScale(s => Math.min(3, s + 0.1))}><Maximize2 size={14}/></button>
+            <span className="font-mono text-xs w-10 text-center text-accent">{Math.round(pdfScale * 100)}%</span>
+            <button className="icon-btn" onClick={() => setPdfScale(s => Math.max(0.2, s - 0.1))}><Minimize2 size={14}/></button>
+          </div>
         </div>
 
         <button className="btn-primary flex items-center gap-2" onClick={handleSave}>
@@ -157,22 +210,25 @@ export default function FocusEditor({ resource, onClose, onSave }) {
         >
           {/* WINDOW 1: RESOURCE (LEFT) */}
           <Rnd
-            default={{ x: 40, y: 40, width: 700, height: 500 }}
+            default={{ x: 40, y: 40, width: 800, height: 600 }}
             minWidth={300}
             minHeight={200}
             bounds="parent"
             scale={zoom}
             className="spatial-window"
+            dragHandleClassName="window-header"
             style={{ zIndex: zIndices.resource }}
             onMouseDown={() => focusWindow('resource')}
-            dragHandleClassName="window-header"
+            onDragStart={startInteracting}
+            onDragStop={stopInteracting}
+            onResizeStart={startInteracting}
+            onResizeStop={stopInteracting}
           >
             <div className="window-header">
               <div className="flex items-center gap-2">
                 <div className="w-2 h-2 rounded-full bg-red-500"></div>
                 <span className="window-title">Resource Node</span>
               </div>
-              <Maximize2 size={12} className="text-muted" />
             </div>
             <div className="window-content bg-black">
               {renderResource()}
@@ -181,22 +237,25 @@ export default function FocusEditor({ resource, onClose, onSave }) {
 
           {/* WINDOW 2: EDITOR (RIGHT) */}
           <Rnd
-            default={{ x: 780, y: 40, width: 600, height: 800 }}
-            minWidth={480} // Fixed Minimum Width as requested
+            default={{ x: 880, y: 40, width: 600, height: 800 }}
+            minWidth={480}
             minHeight={300}
             bounds="parent"
             scale={zoom}
             className="spatial-window"
+            dragHandleClassName="window-header"
             style={{ zIndex: zIndices.editor }}
             onMouseDown={() => focusWindow('editor')}
-            dragHandleClassName="window-header"
+            onDragStart={startInteracting}
+            onDragStop={stopInteracting}
+            onResizeStart={startInteracting}
+            onResizeStop={stopInteracting}
           >
             <div className="window-header">
               <div className="flex items-center gap-2">
                 <div className="w-2 h-2 rounded-full bg-blue-500"></div>
                 <span className="window-title">Note Editor Tab</span>
               </div>
-              <Maximize2 size={12} className="text-muted" />
             </div>
             <div className="window-content bg-surface flex-col">
               <MenuBar editor={editor} />

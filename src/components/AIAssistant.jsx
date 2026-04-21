@@ -5,7 +5,7 @@ import { db } from '../firebase';
 import { askAI } from '../gemini';
 import './AIAssistant.css';
 
-export default function AIAssistant({ isOpen, onClose, tasks, userSettings, userId }) {
+export default function AIAssistant({ tasks, userSettings, userId }) {
   const [messages, setMessages] = useState([
     { id: 1, role: 'ai', text: "Hello! I'm your AI Workspace Assistant. I can help summarize tasks, prioritize work, or fetch insights." }
   ]);
@@ -24,11 +24,9 @@ export default function AIAssistant({ isOpen, onClose, tasks, userSettings, user
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const ws = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
       setAvailableWorkspaces(ws);
-      // Default select none or all? Let's default to none specified, 
-      // or the app's current context if we had one.
     });
     return () => unsubscribe();
-  }, [userSettings]);
+  }, [userId]);
 
   const toggleContext = (id) => {
     setSelectedContextIds(prev => 
@@ -58,8 +56,7 @@ export default function AIAssistant({ isOpen, onClose, tasks, userSettings, user
       const customKey = userSettings?.geminiApiKey || null;
       const modelName = userSettings?.preferredModel || "gemini-flash-latest";
       
-      // Build Aggregated Context
-      let aggregatedContext = {
+      const aggregatedContext = {
         tasks: tasks.filter(t => selectedContextIds.length === 0 || selectedContextIds.includes(t.workspaceId)),
         workspaces: availableWorkspaces.filter(w => selectedContextIds.includes(w.id))
       };
@@ -83,50 +80,109 @@ export default function AIAssistant({ isOpen, onClose, tasks, userSettings, user
     }
   };
 
+  const sanitizeUrl = (url) => {
+    if (!url) return '';
+    if (!/^https?:\/\//i.test(url)) {
+      return `https://${url}`;
+    }
+    return url;
+  };
+
+  const renderMessageContent = (text) => {
+    if (!text) return null;
+    
+    // Split into lines to handle lists and blocks
+    const lines = text.split('\n');
+    return lines.map((line, i) => {
+      let content = line;
+      
+      // Handle bold: **text** -> <b>text</b>
+      content = content.replace(/\*\*(.*?)\*\*/g, (match, p1) => `<strong>${p1}</strong>`);
+      
+      // Handle markdown links: [text](url)
+      content = content.replace(/\[(.*?)\]\((.*?)\)/g, (match, p1, p2) => 
+        `<a href="${sanitizeUrl(p2)}" target="_blank" rel="noopener noreferrer" class="ai-link">${p1}</a>`
+      );
+
+      // Handle raw URLs (only if not already part of an <a> tag)
+      content = content.replace(/(?<!=["'])(https?:\/\/[^\s<]+)/g, (match, p1) => 
+        `<a href="${sanitizeUrl(p1)}" target="_blank" rel="noopener noreferrer" class="ai-link">${p1}</a>`
+      );
+      
+      // Handle italic: *text* -> <i>text</i>
+      content = content.replace(/\*(.*?)\*/g, (match, p1) => `<em>${p1}</em>`);
+
+      // Handle bullet points: * or - at start
+      if (line.trim().startsWith('* ') || line.trim().startsWith('- ')) {
+        const bulletText = line.trim().substring(2);
+        // Apply replacements to bullet text too
+        let formattedBullet = bulletText
+          .replace(/\*\*(.*?)\*\*/g, (match, p1) => `<strong>${p1}</strong>`)
+          .replace(/\[(.*?)\]\((.*?)\)/g, (match, p1, p2) => `<a href="${sanitizeUrl(p2)}" target="_blank" rel="noopener noreferrer" class="ai-link">${p1}</a>`)
+          .replace(/(?<!=["'])(https?:\/\/[^\s<]+)/g, (match, p1) => `<a href="${sanitizeUrl(p1)}" target="_blank" rel="noopener noreferrer" class="ai-link">${p1}</a>`);
+          
+        return (
+          <div key={i} className="flex gap-2 mb-1 pl-2">
+            <span className="text-ai">•</span>
+            <span dangerouslySetInnerHTML={{ __html: formattedBullet }} />
+          </div>
+        );
+      }
+
+      return (
+        <p 
+          key={i} 
+          className={line.trim() === '' ? 'h-2' : 'mb-2'} 
+          dangerouslySetInnerHTML={{ __html: content }} 
+        />
+      );
+    });
+  };
+
   return (
-    <div className={`ai-panel flex-col ${isOpen ? 'open' : ''}`}>
-      <div className="ai-header flex justify-between items-center">
-        <div className="flex items-center gap-2 text-ai">
-          <Sparkles size={18} />
-          <span className="font-bold uppercase tracking-widest text-[10px]">Neural Interface</span>
+    <div className="ai-panel flex-col">
+      <div className="ai-header">
+        <div className="ai-header-content flex items-center gap-3">
+          <Sparkles size={28} className="text-ai" />
+          <h1>AI Assistant</h1>
         </div>
-        <button className="icon-btn" onClick={onClose}><X size={18} /></button>
       </div>
 
-      {/* Context Selector */}
-      <div className="ai-context-selector p-4 border-b border-color bg-surface-container-low">
-        <p className="text-[9px] font-black uppercase text-muted mb-2 tracking-widest">Contextual Memory Access</p>
-        <div className="flex flex-wrap gap-2">
+      {/* Context Selector (Top) */}
+      <div className="ai-context-selector">
+        <p className="text-[10px] font-black uppercase text-muted tracking-[0.2em]">Contextual Workspace Memory</p>
+        <div className="hub-selection-grid">
           {availableWorkspaces.map(ws => (
             <button 
               key={ws.id}
               onClick={() => toggleContext(ws.id)}
-              className={`text-[9px] px-2 py-1 border transition-all flex items-center gap-2 ${selectedContextIds.includes(ws.id) ? 'bg-accent text-white border-accent' : 'bg-surface border-color text-muted'}`}
+              className={`hub-chip ${selectedContextIds.includes(ws.id) ? 'selected' : ''}`}
+              title={`Context: ${ws.name}`}
             >
-              <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: ws.color }}></div>
-              {ws.name}
+              <div className="hub-indicator" style={{ backgroundColor: ws.color }}></div>
+              <span>{ws.name}</span>
             </button>
           ))}
-          {availableWorkspaces.length === 0 && <p className="text-[10px] italic">No workspaces detected.</p>}
+          {availableWorkspaces.length === 0 && <p className="text-[10px] italic py-2">No hubs detected.</p>}
         </div>
       </div>
 
-      <div className="chat-container flex-col gap-4">
+      <div className="chat-container">
         {messages.map(msg => (
           <div key={msg.id} className={`message flex gap-3 ${msg.role}`}>
             {msg.role === 'ai' && (
-              <div className="avatar ai-avatar"><Bot size={16} /></div>
+              <div className="avatar"><Bot size={18} /></div>
             )}
-            <div className="message-bubble text-sm" style={{ whiteSpace: 'pre-wrap' }}>
-              {msg.text}
+            <div className="message-bubble text-sm">
+              {renderMessageContent(msg.text)}
             </div>
           </div>
         ))}
         {isTyping && (
           <div className="message flex gap-3 ai">
-            <div className="avatar ai-avatar"><Bot size={16} /></div>
-            <div className="message-bubble text-sm flex items-center">
-       <Loader2 className="rotating text-ai" size={16} />
+            <div className="avatar"><Loader2 className="rotating" size={18} /></div>
+            <div className="message-bubble text-sm italic opacity-50">
+              Processing system context...
             </div>
           </div>
         )}
@@ -137,12 +193,12 @@ export default function AIAssistant({ isOpen, onClose, tasks, userSettings, user
         <form onSubmit={handleSend} className="chat-input-wrapper">
           <input 
             type="text" 
-            placeholder="Ask AI anything..." 
+            placeholder="Ask anything about your workspaces, tasks, or insights..." 
             value={input}
             onChange={e => setInput(e.target.value)}
           />
-          <button type="submit" className="send-btn flex items-center justify-center" disabled={isTyping}>
-            <Send size={16} />
+          <button type="submit" className="send-btn" disabled={isTyping}>
+            <Send size={18} />
           </button>
         </form>
       </div>

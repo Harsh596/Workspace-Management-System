@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { User, Palette, Trash2, ShieldAlert, LogOut, Check } from 'lucide-react';
 import { auth, db } from '../firebase';
-import { doc, updateDoc, deleteDoc } from 'firebase/firestore';
-import { deleteUser, reauthenticateWithRedirect, GoogleAuthProvider, getRedirectResult } from 'firebase/auth';
+import { doc, updateDoc, deleteDoc, collection, query, where, getDocs, writeBatch } from 'firebase/firestore';
+import { deleteUser, GoogleAuthProvider, reauthenticateWithPopup } from 'firebase/auth';
 import { THEMES, applyTheme } from '../themes';
 import './Settings.css';
 
@@ -11,38 +11,35 @@ export default function Settings({ userId, userSettings }) {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  // Handle redirect result for re-authentication
-  useEffect(() => {
-    const checkRedirect = async () => {
-      const isPending = localStorage.getItem('wms_pending_deletion');
-      if (!isPending) return;
+  /**
+   * THE RESILIENT WIPE (Best-Effort Purge)
+   * Purges all user data across all collections.
+   */
+  const performFullWipe = async (uid) => {
+    console.log("Resilient Wipe Starting for:", uid);
+    const segments = [
+      { name: 'Settings', run: async () => await deleteDoc(doc(db, 'userSettings', uid)) },
+      { name: 'Resources', query: query(collection(db, 'globalResources'), where('userId', '==', uid)) },
+      { name: 'Tasks', query: query(collection(db, 'tasks'), where('userId', '==', uid)) },
+      { name: 'Workspaces', query: query(collection(db, 'workspaces'), where('ownerId', '==', uid)) }
+    ];
 
+    for (const segment of segments) {
       try {
-        setLoading(true);
-        const result = await getRedirectResult(auth);
-        
-        // If we have a result, it means the user just returned from re-authentication
-        if (result || auth.currentUser) {
-          const user = auth.currentUser;
-          
-          // Complete the deletion
-          await deleteUser(user);
-          await deleteDoc(doc(db, 'userSettings', userId));
-          
-          localStorage.removeItem('wms_pending_deletion');
-          window.location.href = '/login';
+        if (segment.run) {
+          await segment.run();
+        } else if (segment.query) {
+          const snap = await getDocs(segment.query);
+          if (snap.empty) continue;
+          const batch = writeBatch(db);
+          snap.forEach(d => batch.delete(d.ref));
+          await batch.commit();
         }
       } catch (err) {
-        setError("Re-authentication failed. Please try again.");
-        console.error("Deletion Redirect Error:", err);
-        localStorage.removeItem('wms_pending_deletion');
-      } finally {
-        setLoading(false);
+        console.warn(`⚠ Segment [${segment.name}] failed:`, err.message);
       }
-    };
-
-    checkRedirect();
-  }, [userId]);
+    }
+  };
 
   const handleThemeChange = async (themeId) => {
     setActiveTheme(themeId);
@@ -57,37 +54,42 @@ export default function Settings({ userId, userSettings }) {
   };
 
   const handleDeleteAccount = async () => {
-    if (!window.confirm("CRITICAL: This will permanently delete your account and all associated data. Continue?")) return;
+    const confirmation = window.confirm(
+      "CRITICAL: This will permanently delete your account and associated data. This action is IRREVERSIBLE. Proceed?"
+    );
+    if (!confirmation) return;
     
     setLoading(true);
+    setError('');
+
     try {
       const user = auth.currentUser;
       if (!user) throw new Error("No user found");
 
+      // Attempt Auth Termination with Popup Re-auth if needed
       try {
-        // Attempt immediate deletion
+        // 1. DATA PURGE
+        await performFullWipe(user.uid);
+
+        // 2. AUTH DELETE
         await deleteUser(user);
-        
-        // Success
-        await deleteDoc(doc(db, 'userSettings', userId));
         window.location.href = '/login';
       } catch (authErr) {
         if (authErr.code === 'auth/requires-recent-login') {
-          const result = window.confirm("Security check: We need to verify your identity to delete your account. You will be redirected to Google.");
-          if (result) {
-            // Save intent to resume after redirect
-            localStorage.setItem('wms_pending_deletion', 'true');
-            await reauthenticateWithRedirect(user, new GoogleAuthProvider());
-            // Page will redirect now
-          } else {
-            setLoading(false);
-          }
+          // SWITCH TO POPUP FOR STABILITY
+          const provider = new GoogleAuthProvider();
+          await reauthenticateWithPopup(user, provider);
+          
+          // Re-try wipe and delete after successful popup
+          await performFullWipe(user.uid);
+          await deleteUser(user);
+          window.location.href = '/login';
         } else {
           throw authErr;
         }
       }
     } catch (err) {
-      setError("Deletion failed: " + err.message);
+      setError("Termination failed: " + err.message);
       setLoading(false);
     }
   };
@@ -151,7 +153,7 @@ export default function Settings({ userId, userSettings }) {
         </section>
 
         {/* Danger Zone */}
-        <section className="settings-section bento-card p-10 border-red-500/20 bg-red-500/5 flex gap-10">
+        <section className="settings-section bento-card p-10 danger-section flex gap-10">
           <div className="section-info w-1/3 text-red-500">
             <div className="flex items-center gap-3 mb-4">
                <ShieldAlert size={20} />

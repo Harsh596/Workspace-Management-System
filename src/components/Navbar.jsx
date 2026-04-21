@@ -4,11 +4,12 @@ import { LayoutDashboard, CheckSquare, Settings, Sparkles, LogOut, Folder, Netwo
 import { auth, signOut } from '../firebase';
 import './Navbar.css';
 
-export default function Navbar({ showAI, setShowAI }) {
+export default function Navbar() {
   const menuItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, path: '/dashboard' },
-    { id: 'workspaces', label: 'Workspaces', icon: Folder, path: '/workspaces' },
+    { id: 'workspaces', label: 'Hubs', icon: Folder, path: '/workspaces' },
     { id: 'tasks', label: 'Tasks', icon: CheckSquare, path: '/tasks' },
+    { id: 'assistant', label: 'Assistant', icon: Sparkles, path: '/assistant' },
     { id: 'settings', label: 'Settings', icon: Settings, path: '/settings' },
   ];
 
@@ -32,15 +33,6 @@ export default function Navbar({ showAI, setShowAI }) {
       </div>
 
       <div className="navbar-actions flex items-center gap-6">
-        <button
-          className={`nav-item ai-toggle ${showAI ? 'active-ai' : ''}`}
-          onClick={() => setShowAI(!showAI)}
-          title="AI Assistant"
-        >
-          <Sparkles size={18} />
-          <span>Assistant</span>
-        </button>
-
         <div className="flex gap-4 border-l border-color pl-6 h-full items-center">
           <button className="icon-btn text-primary border-none p-2 hover:bg-surface-container transition-colors" title="Notifications">
             <Bell size={18} />

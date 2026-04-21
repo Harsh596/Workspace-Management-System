@@ -29,26 +29,18 @@ const ProtectedRoute = ({ user, loading, children }) => {
 };
 
 // Layout for Protected Pages
-const DashboardLayout = ({ children, showAI, setShowAI, tasks, userSettings, userId }) => {
+const DashboardLayout = ({ children }) => {
   return (
     <div className="flex flex-col h-full w-full">
-      <Navbar showAI={showAI} setShowAI={setShowAI} />
+      <Navbar />
       <main className="flex-1 overflow-hidden relative flex flex-col">
         {children}
       </main>
-      <AIAssistant 
-        isOpen={showAI} 
-        onClose={() => setShowAI(false)}
-        tasks={tasks}
-        userSettings={userSettings}
-        userId={userId}
-      />
     </div>
   );
 };
 
 export default function App() {
-  const [showAI, setShowAI] = useState(false);
   const [tasks, setTasks] = useState([]);
   const [userSettings, setUserSettings] = useState(null);
   const [user, setUser] = useState(null);
@@ -119,13 +111,7 @@ export default function App() {
             path="/dashboard" 
             element={
               <ProtectedRoute user={user} loading={loading}>
-                <DashboardLayout 
-                  showAI={showAI} 
-                  setShowAI={setShowAI} 
-                  tasks={tasks} 
-                  userSettings={userSettings} 
-                  userId={user?.uid}
-                >
+                <DashboardLayout>
                   <Dashboard tasks={tasks} userSettings={userSettings} userId={user?.uid} />
                 </DashboardLayout>
               </ProtectedRoute>
@@ -136,13 +122,7 @@ export default function App() {
             path="/workspaces" 
             element={
               <ProtectedRoute user={user} loading={loading}>
-                <DashboardLayout 
-                  showAI={showAI} 
-                  setShowAI={setShowAI} 
-                  tasks={tasks} 
-                  userSettings={userSettings} 
-                  userId={user?.uid}
-                >
+                <DashboardLayout>
                   <Workspaces userId={user?.uid} userSettings={userSettings} />
                 </DashboardLayout>
               </ProtectedRoute>
@@ -153,14 +133,23 @@ export default function App() {
             path="/tasks" 
             element={
               <ProtectedRoute user={user} loading={loading}>
-                <DashboardLayout 
-                  showAI={showAI} 
-                  setShowAI={setShowAI} 
-                  tasks={tasks} 
-                  userSettings={userSettings} 
-                  userId={user?.uid}
-                >
+                <DashboardLayout>
                   <TaskBoard tasks={tasks} userId={user?.uid} />
+                </DashboardLayout>
+              </ProtectedRoute>
+            } 
+          />
+
+          <Route 
+            path="/assistant" 
+            element={
+              <ProtectedRoute user={user} loading={loading}>
+                <DashboardLayout>
+                  <AIAssistant 
+                    tasks={tasks}
+                    userSettings={userSettings}
+                    userId={user?.uid}
+                  />
                 </DashboardLayout>
               </ProtectedRoute>
             } 
@@ -170,13 +159,7 @@ export default function App() {
             path="/settings" 
             element={
               <ProtectedRoute user={user} loading={loading}>
-                <DashboardLayout 
-                  showAI={showAI} 
-                  setShowAI={setShowAI} 
-                  tasks={tasks} 
-                  userSettings={userSettings} 
-                  userId={user?.uid}
-                >
+                <DashboardLayout>
                   <Settings userId={user?.uid} userSettings={userSettings} />
                 </DashboardLayout>
               </ProtectedRoute>

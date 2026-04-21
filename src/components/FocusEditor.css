@@ -61,6 +61,24 @@
   box-shadow: 0 12px 40px rgba(0,0,0,0.3);
   border-radius: var(--radius);
   overflow: hidden;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.spatial-window:hover {
+  border-color: var(--accent-ai);
+  box-shadow: 0 12px 60px rgba(0,0,0,0.4);
+}
+
+.pointer-events-none {
+  pointer-events: none;
+}
+
+.pointer-events-auto {
+  pointer-events: auto;
+}
+
+.transition-opacity {
+  transition: opacity 0.3s ease;
 }
 
 .window-header {

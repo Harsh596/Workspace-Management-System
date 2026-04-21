@@ -353,6 +353,68 @@ html, body, #root, #__next {
 .vault-ingest-container {
   padding: 32px;
   background: linear-gradient(to bottom, rgba(255,255,255, 0.05), transparent);
+  flex-shrink: 0;
+}
+
+/* Storage Mode Selector */
+.storage-mode-selector {
+  display: flex;
+  background: var(--bg-tertiary);
+  padding: 4px;
+  border-radius: 12px;
+  border: 1px solid var(--border-color);
+  gap: 4px;
+}
+
+.storage-btn {
+  flex: 1;
+  padding: 8px;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  border-radius: 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.storage-btn.active {
+  background: var(--bg-secondary);
+  color: var(--accent-ai);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  border: 1px solid var(--accent-ai-glow);
+}
+
+.storage-btn span {
+  font-size: 10px;
+  letter-spacing: 0.1em;
+}
+
+.storage-tag {
+  font-size: 9px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-weight: 950;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.storage-tag.local {
+  background: var(--accent-ai-glow);
+  color: var(--accent-ai);
+  border: 1px solid var(--accent-ai);
+}
+
+.storage-tag.cloud {
+  background: var(--bg-tertiary);
+  color: var(--text-muted);
+  border: 1px solid var(--border-color);
 }
 
 .resource-type-selector {
