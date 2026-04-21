@@ -3,7 +3,7 @@ import { LogIn, AlertCircle, ShieldCheck } from 'lucide-react';
 import { 
   auth, 
   googleProvider, 
-  signInWithPopup
+  signInWithRedirect 
 } from '../firebase';
 import './Auth.css';
 
@@ -15,15 +15,11 @@ export default function Authentication() {
     setError('');
     setLoading(true);
     
-    // Trigger popup immediately on user interaction to prevent browser blocking
-    signInWithPopup(auth, googleProvider)
-      .then((result) => {
-        console.log("Logged in via popup:", result.user.email);
-        // App.jsx onAuthStateChanged will handle navigation
-      })
+    // Switch to Redirect to avoid popup-blocked errors entirely
+    signInWithRedirect(auth, googleProvider)
       .catch((err) => {
-        setError('Authentication failed or was closed. Please try again.');
-        console.error("Popup Auth Error:", err);
+        setError('Authentication failed. Please try again.');
+        console.error("Redirect Auth Error:", err);
         setLoading(false);
       });
   };

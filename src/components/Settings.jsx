@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { User, Palette, Trash2, ShieldAlert, LogOut, Check } from 'lucide-react';
 import { auth, db } from '../firebase';
 import { doc, updateDoc, deleteDoc, collection, query, where, getDocs, writeBatch } from 'firebase/firestore';
-import { deleteUser, GoogleAuthProvider, reauthenticateWithPopup } from 'firebase/auth';
+import { deleteUser, GoogleAuthProvider, reauthenticateWithRedirect, getRedirectResult } from 'firebase/auth';
 import { THEMES, applyTheme } from '../themes';
 import './Settings.css';
 
@@ -41,6 +41,36 @@ export default function Settings({ userId, userSettings }) {
     }
   };
 
+  // RESTORED: Handle return from Redirect re-authentication
+  useEffect(() => {
+    const handleRedirectResult = async () => {
+      const isPending = localStorage.getItem('wms_pending_deletion');
+      if (!isPending) return;
+
+      try {
+        setLoading(true);
+        const result = await getRedirectResult(auth);
+        
+        // If we have a result OR we know we just came back
+        if (result || auth.currentUser) {
+          const user = auth.currentUser;
+          await performFullWipe(user.uid);
+          await deleteUser(user);
+          localStorage.removeItem('wms_pending_deletion');
+          window.location.href = '/login';
+        }
+      } catch (err) {
+        console.error("Post-Redirect Termination Error:", err);
+        setError("Account verification failed. Please try again.");
+        localStorage.removeItem('wms_pending_deletion');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    handleRedirectResult();
+  }, [userId]);
+
   const handleThemeChange = async (themeId) => {
     setActiveTheme(themeId);
     applyTheme(themeId);
@@ -66,7 +96,6 @@ export default function Settings({ userId, userSettings }) {
       const user = auth.currentUser;
       if (!user) throw new Error("No user found");
 
-      // Attempt Auth Termination with Popup Re-auth if needed
       try {
         // 1. DATA PURGE
         await performFullWipe(user.uid);
@@ -76,14 +105,11 @@ export default function Settings({ userId, userSettings }) {
         window.location.href = '/login';
       } catch (authErr) {
         if (authErr.code === 'auth/requires-recent-login') {
-          // SWITCH TO POPUP FOR STABILITY
+          // SWITCHED BACK TO REDIRECT TO BYPASS POPUP BLOCKERS
           const provider = new GoogleAuthProvider();
-          await reauthenticateWithPopup(user, provider);
-          
-          // Re-try wipe and delete after successful popup
-          await performFullWipe(user.uid);
-          await deleteUser(user);
-          window.location.href = '/login';
+          localStorage.setItem('wms_pending_deletion', 'true');
+          await reauthenticateWithRedirect(user, provider);
+          // Page will redirect now
         } else {
           throw authErr;
         }
