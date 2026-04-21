@@ -3,13 +3,35 @@ import { LogIn, AlertCircle, ShieldCheck } from 'lucide-react';
 import { 
   auth, 
   googleProvider, 
-  signInWithRedirect 
+  signInWithRedirect,
+  getRedirectResult
 } from '../firebase';
 import './Auth.css';
 
 export default function Authentication() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+
+  // Handle the redirect result when the user returns from Google
+  useEffect(() => {
+    const checkRedirect = async () => {
+      try {
+        setLoading(true);
+        const result = await getRedirectResult(auth);
+        if (result) {
+          console.log("Successfully authenticated via redirect:", result.user.email);
+          // App.jsx onAuthStateChanged will handle the final state sync
+        }
+      } catch (err) {
+        console.error("Redirect Auth Result Error:", err);
+        setError('Authentication failed. Please try again.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    checkRedirect();
+  }, []);
 
   const handleGoogleSignIn = () => {
     setError('');
@@ -18,8 +40,8 @@ export default function Authentication() {
     // Switch to Redirect to avoid popup-blocked errors entirely
     signInWithRedirect(auth, googleProvider)
       .catch((err) => {
-        setError('Authentication failed. Please try again.');
-        console.error("Redirect Auth Error:", err);
+        setError('Authentication initializing failed. Please try again.');
+        console.error("Redirect Initialization Error:", err);
         setLoading(false);
       });
   };
