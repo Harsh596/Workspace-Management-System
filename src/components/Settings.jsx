@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { User, Palette, Trash2, ShieldAlert, LogOut, Check } from 'lucide-react';
 import { auth, db } from '../firebase';
 import { doc, updateDoc, deleteDoc } from 'firebase/firestore';
-import { deleteUser } from 'firebase/auth';
+import { deleteUser, reauthenticateWithRedirect, GoogleAuthProvider, getRedirectResult } from 'firebase/auth';
 import { THEMES, applyTheme } from '../themes';
 import './Settings.css';
 
@@ -10,6 +10,39 @@ export default function Settings({ userId, userSettings }) {
   const [activeTheme, setActiveTheme] = useState(userSettings?.theme || 'default');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+
+  // Handle redirect result for re-authentication
+  useEffect(() => {
+    const checkRedirect = async () => {
+      const isPending = localStorage.getItem('wms_pending_deletion');
+      if (!isPending) return;
+
+      try {
+        setLoading(true);
+        const result = await getRedirectResult(auth);
+        
+        // If we have a result, it means the user just returned from re-authentication
+        if (result || auth.currentUser) {
+          const user = auth.currentUser;
+          
+          // Complete the deletion
+          await deleteUser(user);
+          await deleteDoc(doc(db, 'userSettings', userId));
+          
+          localStorage.removeItem('wms_pending_deletion');
+          window.location.href = '/login';
+        }
+      } catch (err) {
+        setError("Re-authentication failed. Please try again.");
+        console.error("Deletion Redirect Error:", err);
+        localStorage.removeItem('wms_pending_deletion');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    checkRedirect();
+  }, [userId]);
 
   const handleThemeChange = async (themeId) => {
     setActiveTheme(themeId);
@@ -28,18 +61,33 @@ export default function Settings({ userId, userSettings }) {
     
     setLoading(true);
     try {
-      // 1. Delete Firestore Data
-      await deleteDoc(doc(db, 'userSettings', userId));
-      
-      // 2. Delete Auth User
       const user = auth.currentUser;
-      if (user) {
+      if (!user) throw new Error("No user found");
+
+      try {
+        // Attempt immediate deletion
         await deleteUser(user);
+        
+        // Success
+        await deleteDoc(doc(db, 'userSettings', userId));
+        window.location.href = '/login';
+      } catch (authErr) {
+        if (authErr.code === 'auth/requires-recent-login') {
+          const result = window.confirm("Security check: We need to verify your identity to delete your account. You will be redirected to Google.");
+          if (result) {
+            // Save intent to resume after redirect
+            localStorage.setItem('wms_pending_deletion', 'true');
+            await reauthenticateWithRedirect(user, new GoogleAuthProvider());
+            // Page will redirect now
+          } else {
+            setLoading(false);
+          }
+        } else {
+          throw authErr;
+        }
       }
-      window.location.reload();
     } catch (err) {
-      setError("Deletion failed. You may need to re-authenticate first: " + err.message);
-    } finally {
+      setError("Deletion failed: " + err.message);
       setLoading(false);
     }
   };

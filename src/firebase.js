@@ -3,6 +3,9 @@ import {
   getAuth, 
   GoogleAuthProvider, 
   signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
+  reauthenticateWithRedirect,
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   signOut
@@ -32,6 +35,9 @@ export {
   storage,
   googleProvider,
   signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
+  reauthenticateWithRedirect,
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   signOut

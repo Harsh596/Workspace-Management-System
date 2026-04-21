@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { getAuth, onAuthStateChanged } from 'firebase/auth';
-import { collection, doc, query, where, onSnapshot, updateDoc } from 'firebase/firestore';
-import { db } from './firebase';
+import { onAuthStateChanged } from 'firebase/auth';
+import { collection, doc, query, where, onSnapshot } from 'firebase/firestore';
+import { auth, db, getRedirectResult } from './firebase';
 import { applyTheme } from './themes';
 import Navbar from './components/Navbar';
 import Dashboard from './components/Dashboard';
@@ -14,8 +14,8 @@ import Authentication from './components/Authentication';
 import { ShieldCheck } from 'lucide-react';
 import './App.css';
 
-// Protected Route Component
-const ProtectedRoute = ({ children, user, loading }) => {
+// Protected Route Guard
+const ProtectedRoute = ({ user, loading, children }) => {
   if (loading) return (
     <div className="loading-screen">
       <div className="loading-logo-container">
@@ -24,11 +24,27 @@ const ProtectedRoute = ({ children, user, loading }) => {
     </div>
   );
   
-  if (!user) {
-    return <Navigate to="/login" replace />;
-  }
-  
+  if (!user) return <Navigate to="/login" replace />;
   return children;
+};
+
+// Layout for Protected Pages
+const DashboardLayout = ({ children, showAI, setShowAI, tasks, userSettings, userId }) => {
+  return (
+    <div className="flex flex-col h-full w-full">
+      <Navbar showAI={showAI} setShowAI={setShowAI} />
+      <main className="flex-1 overflow-hidden relative flex flex-col">
+        {children}
+      </main>
+      <AIAssistant 
+        isOpen={showAI} 
+        onClose={() => setShowAI(false)}
+        tasks={tasks}
+        userSettings={userSettings}
+        userId={userId}
+      />
+    </div>
+  );
 };
 
 export default function App() {
@@ -39,11 +55,12 @@ export default function App() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const auth = getAuth();
     const unsubscribeAuth = onAuthStateChanged(auth, (currentUser) => {
+      console.log("Auth State Changed: ", currentUser?.email || 'Logged Out');
       setUser(currentUser);
       setLoading(false);
     });
+    
     return () => unsubscribeAuth();
   }, []);
 
@@ -91,36 +108,84 @@ export default function App() {
     <Router>
       <div className="app-container flex flex-col h-screen overflow-hidden">
         <Routes>
-          {/* Public Login Route */}
+          {/* Public Routes */}
           <Route 
             path="/login" 
             element={user ? <Navigate to="/dashboard" replace /> : <Authentication />} 
           />
 
-          {/* Protected Routes */}
-          <Route path="/*" element={
-            <ProtectedRoute user={user} loading={loading}>
-              <div className="flex flex-col h-full w-full">
-                <Navbar showAI={showAI} setShowAI={setShowAI} />
-                <main className="flex-1 overflow-hidden relative flex flex-col">
-                  <Routes>
-                    <Route path="/" element={<Navigate to="/dashboard" replace />} />
-                    <Route path="/dashboard" element={<Dashboard tasks={tasks} userSettings={userSettings} userId={user?.uid} />} />
-                    <Route path="/workspaces" element={<Workspaces userId={user?.uid} userSettings={userSettings} />} />
-                    <Route path="/tasks" element={<TaskBoard tasks={tasks} userId={user?.uid} />} />
-                    <Route path="/settings" element={<Settings userId={user?.uid} userSettings={userSettings} />} />
-                  </Routes>
-                </main>
-                <AIAssistant 
-                  isOpen={showAI} 
-                  onClose={() => setShowAI(false)}
-                  tasks={tasks}
-                  userSettings={userSettings}
+          {/* Protected Area */}
+          <Route 
+            path="/dashboard" 
+            element={
+              <ProtectedRoute user={user} loading={loading}>
+                <DashboardLayout 
+                  showAI={showAI} 
+                  setShowAI={setShowAI} 
+                  tasks={tasks} 
+                  userSettings={userSettings} 
                   userId={user?.uid}
-                />
-              </div>
-            </ProtectedRoute>
-          } />
+                >
+                  <Dashboard tasks={tasks} userSettings={userSettings} userId={user?.uid} />
+                </DashboardLayout>
+              </ProtectedRoute>
+            } 
+          />
+
+          <Route 
+            path="/workspaces" 
+            element={
+              <ProtectedRoute user={user} loading={loading}>
+                <DashboardLayout 
+                  showAI={showAI} 
+                  setShowAI={setShowAI} 
+                  tasks={tasks} 
+                  userSettings={userSettings} 
+                  userId={user?.uid}
+                >
+                  <Workspaces userId={user?.uid} userSettings={userSettings} />
+                </DashboardLayout>
+              </ProtectedRoute>
+            } 
+          />
+
+          <Route 
+            path="/tasks" 
+            element={
+              <ProtectedRoute user={user} loading={loading}>
+                <DashboardLayout 
+                  showAI={showAI} 
+                  setShowAI={setShowAI} 
+                  tasks={tasks} 
+                  userSettings={userSettings} 
+                  userId={user?.uid}
+                >
+                  <TaskBoard tasks={tasks} userId={user?.uid} />
+                </DashboardLayout>
+              </ProtectedRoute>
+            } 
+          />
+
+          <Route 
+            path="/settings" 
+            element={
+              <ProtectedRoute user={user} loading={loading}>
+                <DashboardLayout 
+                  showAI={showAI} 
+                  setShowAI={setShowAI} 
+                  tasks={tasks} 
+                  userSettings={userSettings} 
+                  userId={user?.uid}
+                >
+                  <Settings userId={user?.uid} userSettings={userSettings} />
+                </DashboardLayout>
+              </ProtectedRoute>
+            } 
+          />
+
+          {/* Fallbacks */}
+          <Route path="/" element={<Navigate to="/dashboard" replace />} />
+          <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Routes>
       </div>
     </Router>

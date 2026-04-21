@@ -3,7 +3,7 @@ import { LogIn, AlertCircle, ShieldCheck } from 'lucide-react';
 import { 
   auth, 
   googleProvider, 
-  signInWithPopup 
+  signInWithPopup
 } from '../firebase';
 import './Auth.css';
 
@@ -11,17 +11,21 @@ export default function Authentication() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const handleGoogleSignIn = async () => {
+  const handleGoogleSignIn = () => {
     setError('');
     setLoading(true);
-    try {
-      await signInWithPopup(auth, googleProvider);
-    } catch (err) {
-      setError('Connection failed. Please try again.');
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
+    
+    // Trigger popup immediately on user interaction to prevent browser blocking
+    signInWithPopup(auth, googleProvider)
+      .then((result) => {
+        console.log("Logged in via popup:", result.user.email);
+        // App.jsx onAuthStateChanged will handle navigation
+      })
+      .catch((err) => {
+        setError('Authentication failed or was closed. Please try again.');
+        console.error("Popup Auth Error:", err);
+        setLoading(false);
+      });
   };
 
   return (
