@@ -3,8 +3,7 @@ import { LogIn, AlertCircle, ShieldCheck } from 'lucide-react';
 import { 
   auth, 
   googleProvider, 
-  signInWithRedirect,
-  getRedirectResult
+  signInWithPopup
 } from '../firebase';
 import './Auth.css';
 
@@ -12,38 +11,23 @@ export default function Authentication() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  // Handle the redirect result when the user returns from Google
-  useEffect(() => {
-    const checkRedirect = async () => {
-      try {
-        setLoading(true);
-        const result = await getRedirectResult(auth);
-        if (result) {
-          console.log("Successfully authenticated via redirect:", result.user.email);
-          // App.jsx onAuthStateChanged will handle the final state sync
-        }
-      } catch (err) {
-        console.error("Redirect Auth Result Error:", err);
-        setError('Authentication failed. Please try again.');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    checkRedirect();
-  }, []);
-
-  const handleGoogleSignIn = () => {
+  const handleGoogleSignIn = async () => {
     setError('');
     setLoading(true);
     
-    // Switch to Redirect to avoid popup-blocked errors entirely
-    signInWithRedirect(auth, googleProvider)
-      .catch((err) => {
-        setError('Authentication initializing failed. Please try again.');
-        console.error("Redirect Initialization Error:", err);
-        setLoading(false);
-      });
+    try {
+      console.log("Initiating standard Google Auth popup...");
+      await signInWithPopup(auth, googleProvider);
+      // App.jsx will handle navigation to /dashboard via onAuthStateChanged
+    } catch (err) {
+      console.error("Popup Auth Error:", err);
+      if (err.code === 'auth/popup-closed-by-user') {
+        setError('Login cancelled. Please try again.');
+      } else {
+        setError('Authentication failed. Please check your connection or try again.');
+      }
+      setLoading(false);
+    }
   };
 
   return (
@@ -97,3 +81,4 @@ export default function Authentication() {
     </div>
   );
 }
+
