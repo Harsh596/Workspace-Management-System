@@ -1,10 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { LogIn, AlertCircle, ShieldCheck } from 'lucide-react';
 import { 
   auth, 
   googleProvider, 
-  signInWithRedirect,
-  getRedirectResult
+  signInWithPopup
 } from '../firebase';
 import './Auth.css';
 
@@ -12,37 +11,21 @@ export default function Authentication() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  // Handle the redirect result when the user returns from Google
-  useEffect(() => {
-    const checkRedirectResult = async () => {
-      try {
-        setLoading(true);
-        const result = await getRedirectResult(auth);
-        if (result) {
-          console.log("Successfully authenticated via redirect:", result.user.email);
-        }
-      } catch (err) {
-        console.error("Redirect Auth Result Error:", err);
-        setError('Authentication transition failed. Please try again.');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    checkRedirectResult();
-  }, []);
-
   const handleGoogleSignIn = async () => {
     setError('');
     setLoading(true);
     
     try {
-      console.log("Initiating standard Google Auth redirect...");
-      await signInWithRedirect(auth, googleProvider);
-      // The page will redirect to Google's login page
+      console.log("Initiating standard Google Auth popup...");
+      await signInWithPopup(auth, googleProvider);
+      // App.jsx will handle navigation to /dashboard via onAuthStateChanged
     } catch (err) {
-      console.error("Redirect Initiation Error:", err);
-      setError('Failed to initiate login. Please check your connection.');
+      console.error("Popup Auth Error:", err);
+      if (err.code === 'auth/popup-closed-by-user') {
+        setError('Login cancelled. Please try again.');
+      } else {
+        setError('Authentication failed. Please check your connection or try again.');
+      }
       setLoading(false);
     }
   };
@@ -98,5 +81,4 @@ export default function Authentication() {
     </div>
   );
 }
-
 
