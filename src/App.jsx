@@ -47,13 +47,29 @@ export default function App() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const unsubscribeAuth = onAuthStateChanged(auth, (currentUser) => {
-      console.log("Auth State Changed: ", currentUser?.email || 'Logged Out');
-      setUser(currentUser);
-      setLoading(false);
-    });
-    
-    return () => unsubscribeAuth();
+    // 1. Initialize Auth and handle any pending redirects from previous sessions
+    const initializeAuth = async () => {
+      try {
+        await getRedirectResult(auth);
+      } catch (err) {
+        console.error("Initial Redirect Sync Error:", err);
+      }
+      
+      const unsubscribeAuth = onAuthStateChanged(auth, (currentUser) => {
+        console.log("Auth State Changed: ", currentUser?.email || 'Logged Out');
+        setUser(currentUser);
+        setLoading(false);
+      });
+      
+      return unsubscribeAuth;
+    };
+
+    const unsubPromise = initializeAuth();
+    return () => {
+      unsubPromise.then(unsub => {
+        if (typeof unsub === 'function') unsub();
+      });
+    };
   }, []);
 
   useEffect(() => {

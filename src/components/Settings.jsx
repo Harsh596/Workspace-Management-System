@@ -51,13 +51,22 @@ export default function Settings({ userId, userSettings }) {
         setLoading(true);
         const result = await getRedirectResult(auth);
         
-        // If we have a result OR we know we just came back
-        if (result || auth.currentUser) {
-          const user = auth.currentUser;
+        // CRITICAL: Only proceed if we HAVE a result (meaning we just returned from a re-auth redirect)
+        // This prevents "stale" logins from being accidentally deleted.
+        if (result && result.user) {
+          const user = result.user;
+          console.log("Verified Re-Auth Success. Proceeding with termination for:", user.email);
           await performFullWipe(user.uid);
           await deleteUser(user);
           localStorage.removeItem('wms_pending_deletion');
           window.location.href = '/login';
+        } else {
+          // If we reached here with isPending but no result, it might be a standard login
+          // We clear the flag to be safe, but DON'T delete the user.
+          if (isPending) {
+            console.log("Detected pending deletion flag but no redirect result. Clearing stale flag.");
+            localStorage.removeItem('wms_pending_deletion');
+          }
         }
       } catch (err) {
         console.error("Post-Redirect Termination Error:", err);

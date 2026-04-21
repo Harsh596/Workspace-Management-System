@@ -15,6 +15,9 @@ export default function Authentication() {
     setError('');
     setLoading(true);
     
+    // Safety Catch: Clear any lingering deletion flags before a fresh login
+    localStorage.removeItem('wms_pending_deletion');
+    
     try {
       console.log("Initiating standard Google Auth popup...");
       await signInWithPopup(auth, googleProvider);
