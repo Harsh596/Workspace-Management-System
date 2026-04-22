@@ -63,6 +63,8 @@ WMS is a high-end, professional productivity suite designed to consolidate your 
 4. Set `public` directory to `dist`.
 5. Deploy: `npm run build && firebase deploy`
 
+
+There is an error for the people with inbuilt pop-up blockers, Authentication failed is shown for them. Please try to login/register from an instance without such blockers, we are currently working on it.
 ---
 
 **More features to be added soon.**
